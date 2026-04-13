@@ -1,0 +1,11 @@
+Question,Faithfulness,Relevancy,Correctness,Agent_Answer,Ground_Truth
+What is the title of the preprint by Alicia Golden et al. published in 2024,1,1,5.0,Is flash attention stable?,Is flash attention stable?
+What is the Pass@1 score for the GPT 4o-mini model on the VeriThoughts dataset?,1,1,5.0,80.64,80.64
+What is the arXiv preprint number for the study on open-source language models with mixed-quality data,1,1,5.0,arXiv:2309.11235,arXiv:2309.11235
+What is the title of the arXiv preprint by Hao Yu and others published in 2023?,1,1,5.0,"Open, closed, or small language models for text classification?","Open, closed, or small language models for text classification?"
+What technique involves training a smaller model to replicate the performance of a larger model?,1,1,5.0,"Knowledge distillation is a technique that involves training a smaller ""student"" model to replicate the performance of a larger ""teacher"" model. DistilBERT is an example of this strategy, offering a lightweight yet robust alternative to larger architectures.",Knowledge distillation
+What is the title of the technical report written by Aixin Liu et al. in 2024?,1,1,5.0,Deepseek-v3 technical report.,Deepseek-v3 technical report
+"What is the title of the paper by Andreas Liesenfeld, Alianda Lopez, and Mark Dingemanse",1,1,5.0,"Opening up chatgpt: Tracking openness, transparency, and accountability in instruction-tuned text generators.","Opening up chatgpt: Tracking openness, transparency, and accountability in instruction-tuned text generators"
+What is the size of the dataset for language modeling mentioned in the text?,1,1,5.0,800gb,800gb
+What is the global mean of the first column,1,1,5.0,38.6 ± 14.9,38.6 ± 14.9
+What is the F1 score achieved by DeepSeek-V3 on the DROP benchmark?,1,1,1.0,There is no information available to provide an answer to the query.,91.6%

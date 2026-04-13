@@ -1,0 +1,42 @@
+[
+    {
+        "query": "What is the title of the preprint by Alicia Golden et al. published in 2024",
+        "reference": "Is flash attention stable?"
+    },
+    {
+        "query": "What is the Pass@1 score for the GPT 4o-mini model on the VeriThoughts dataset?",
+        "reference": "80.64"
+    },
+    {
+        "query": "What is the arXiv preprint number for the study on open-source language models with mixed-quality data",
+        "reference": "arXiv:2309.11235"
+    },
+    {
+        "query": "What is the title of the arXiv preprint by Hao Yu and others published in 2023?",
+        "reference": "Open, closed, or small language models for text classification?"
+    },
+    {
+        "query": "What technique involves training a smaller model to replicate the performance of a larger model?",
+        "reference": "Knowledge distillation"
+    },
+    {
+        "query": "What is the title of the technical report written by Aixin Liu et al. in 2024?",
+        "reference": "Deepseek-v3 technical report"
+    },
+    {
+        "query": "What is the title of the paper by Andreas Liesenfeld, Alianda Lopez, and Mark Dingemanse",
+        "reference": "Opening up chatgpt: Tracking openness, transparency, and accountability in instruction-tuned text generators"
+    },
+    {
+        "query": "What is the size of the dataset for language modeling mentioned in the text?",
+        "reference": "800gb"
+    },
+    {
+        "query": "What is the global mean of the first column",
+        "reference": "38.6 \u00b1 14.9"
+    },
+    {
+        "query": "What is the F1 score achieved by DeepSeek-V3 on the DROP benchmark?",
+        "reference": "91.6%"
+    }
+]
