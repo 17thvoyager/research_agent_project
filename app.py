@@ -1,6 +1,5 @@
 import streamlit as st
 import concurrent.futures
-import time
 from agent_logic import get_agentic_engine
 
 # 1. Page Configuration
@@ -68,6 +67,11 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        # If there are citations saved in history, display them
+        if "citations" in message and message["citations"]:
+            with st.expander("📚 Sources & Citations"):
+                for cite in message["citations"]:
+                    st.caption(cite)
 
 # User Chat Input
 if prompt := st.chat_input("Ask a comparative research question..."):
@@ -86,11 +90,33 @@ if prompt := st.chat_input("Ask a comparative research question..."):
                 
                 final_text = str(response)
                 
+                # --- PHASE C: EXTRACT CITATIONS ---
+                citations = set() # Use a set to prevent duplicate citations
+                if hasattr(response, 'source_nodes'):
+                    for node in response.source_nodes:
+                        file_name = node.metadata.get('file_name', 'Unknown Document')
+                        page_label = node.metadata.get('page_label', 'Unknown Page')
+                        # Create a clean citation string
+                        cite_str = f"📄 **{file_name}** (Page {page_label})"
+                        citations.add(cite_str)
+                
                 status.update(label="Analysis Complete!", state="complete", expanded=False)
                 
-                # Render the final synthesis
+                # Render the final synthesis (Table + Gaps)
                 response_placeholder.markdown(final_text)
-                st.session_state.messages.append({"role": "assistant", "content": final_text})
+                
+                # Render the Citations Expander Box
+                if citations:
+                    with st.expander("📚 Sources & Citations"):
+                        for cite in citations:
+                            st.caption(cite)
+                
+                # Save to history
+                st.session_state.messages.append({
+                    "role": "assistant", 
+                    "content": final_text,
+                    "citations": list(citations) # Save citations so they stay on screen
+                })
                 
             except Exception as e:
                 status.update(label="Rate Limit or Error", state="error")
