@@ -853,7 +853,7 @@
             <div style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.15);border-radius:10px;padding:10px 14px;">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <button class="citation-pill flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
-                  onclick="openPdfViewer('${escHtml(c.file)}', ${parseInt(c.page) || 1})">
+                  onclick="openPdfViewer('${escHtml(c.file)}', ${parseInt(c.page) || 1}, '${escHtml(c.section || '')}')">
                   <span>📄</span> ${escHtml(c.file)} <span class="opacity-60">· Pg ${escHtml(c.page)}</span>
                 </button>
                 ${sectionLabel}
@@ -1010,7 +1010,7 @@
     }
 
     // ════════ PDF VIEWER ════════
-    function openPdfViewer(fileName, page) {
+    function openPdfViewer(fileName, page, searchStr = '') {
       currentPdfName = fileName;
       currentPage    = Math.max(parseInt(page) || 1, 1);
 
@@ -1027,10 +1027,17 @@
       document.getElementById('totalPages').textContent = '—';
       document.getElementById('citedStrip').style.display = 'none';
 
+      let hashParams = `#page=${currentPage}`;
+      if (searchStr && searchStr.trim() !== '') {
+          // Native browser PDF viewers (like Chrome/Edge) support #search="string"
+          // to automatically find and highlight text when the PDF opens.
+          hashParams += `&search=${encodeURIComponent(searchStr.trim())}`;
+      }
+
       document.getElementById('pdfContentWrap').innerHTML = `
         <div class="pdf-iframe-wrap">
           <iframe id="pdfIframe" class="pdf-iframe"
-            src="${pdfUrl}#page=${currentPage}"
+            src="${pdfUrl}${hashParams}"
             title="${fileName}"
             onload="document.getElementById('pdfMeta').textContent='Your document'"
             onerror="document.getElementById('pdfMeta').textContent='File not found on server'"

@@ -150,7 +150,7 @@ def parse_response(response_obj) -> tuple[str, list[str], list[dict]]:
         for node in response_obj.source_nodes:
             meta  = node.metadata or {}
             fname = meta.get("file_name", meta.get("filename", ""))
-            page  = meta.get("page_label", meta.get("page", "?"))
+            page  = meta.get("source", meta.get("page_label", meta.get("page", "?")))
 
             if not fname or fname in ("Unknown", ""):
                 continue
@@ -205,6 +205,41 @@ def status():
         }
     except Exception as exc:
         return {"ready": False, "error": str(exc)}
+
+
+@app.get("/debug/chunks")
+def debug_chunks():
+    """
+    Shows exactly how many chunks are indexed per PDF in ChromaDB.
+    Use this to verify documents are properly ingested before querying.
+    Visit: http://localhost:8000/debug/chunks
+    """
+    try:
+        db  = get_db()
+        col = db.get_or_create_collection(COLLECTION)
+        total = col.count()
+
+        if total == 0:
+            return {
+                "total_chunks": 0,
+                "files": {},
+                "warning": "ChromaDB is EMPTY — upload your PDFs first!"
+            }
+
+        # Count chunks per file
+        results = col.get(include=["metadatas"])
+        file_counts: dict[str, int] = {}
+        for meta in results["metadatas"]:
+            fname = meta.get("file_name", meta.get("filename", "unknown"))
+            file_counts[fname] = file_counts.get(fname, 0) + 1
+
+        return {
+            "total_chunks": total,
+            "files": file_counts,
+            "status": "✅ Documents indexed and ready"
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
 
 
 @app.get("/documents/{filename}/serve")
@@ -307,8 +342,9 @@ def query(req: QueryRequest):
     steps = [
         "Routing query → decomposing into sub-questions",
         "Embedding query → BAAI/bge-small-en-v1.5",
-        "Searching ChromaDB → top-k=10 semantic hits",
-        "Reranking nodes → LLM reranker (llama-3.1-8b-instant)",
+        "Searching ChromaDB → Dense (top-10) + BM25 keyword (top-10)",
+        "Fusing results → Reciprocal Rank Fusion (RRF)",
+        "Reranking → Cross-encoder (BAAI/bge-reranker-base, local)",
         "Synthesizing response → llama-3.3-70b-versatile",
     ]
 
@@ -338,7 +374,7 @@ def _ingest_single_pdf(pdf_path: Path):
     _, _, embed_model = get_dual_models()
 
     reader    = PyMuPDFReader()
-    documents = reader.load_data(file=pdf_path)
+    documents = reader.load_data(file_path=pdf_path)
 
     # Attach filename metadata so citations work
     for doc in documents:

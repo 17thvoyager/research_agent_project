@@ -1,12 +1,56 @@
+import re
 import time
 import nest_asyncio
 from llama_index.core import PromptTemplate
 from llama_index.core import get_response_synthesizer
+from llama_index.core.indices.prompt_helper import PromptHelper
+from llama_index.core.question_gen.output_parser import SubQuestionOutputParser
 from llama_index.core.query_engine import SubQuestionQueryEngine
 from llama_index.core.question_gen import LLMQuestionGenerator
 from llama_index.core.tools import QueryEngineTool, ToolMetadata
 from research_engine import get_research_engine
 from app_config import get_dual_models
+
+
+class CleanJSONOutputParser(SubQuestionOutputParser):
+    """
+    The Groq 70B model wraps JSON in ```json fences AND appends prose after
+    the closing ```. The built-in parse_json_markdown strips the opening fence
+    but chokes on trailing text. This override brace-counts to extract only
+    the JSON object before passing it to the parent parser.
+    """
+
+    def parse(self, output: str):
+        # 1. Strip opening ```json or ``` markers
+        cleaned = re.sub(r"```(?:json)?\s*", "", output)
+
+        # 2. Find the JSON object using brace-depth counting
+        #    (handles nested objects robustly — no regex needed for the body)
+        start = cleaned.find("{")
+        if start == -1:
+            return super().parse(cleaned)  # fallback: let original parser try
+
+        depth, end = 0, start
+        for i, ch in enumerate(cleaned[start:], start):
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i
+                    break
+
+        json_only = cleaned[start : end + 1].strip()
+        return super().parse(json_only)
+
+# Explicitly define the context budget so PromptHelper never defaults to 4096.
+# Math: 32768 (context window) - 2048 (output) - ~530 (prompt) = ~30,190 available ✅
+PROMPT_HELPER = PromptHelper(
+    context_window=32768,
+    num_output=2048,
+    chunk_overlap_ratio=0.1,
+    chunk_size_limit=None,
+)
 
 # Apply nest_asyncio for Mac M2
 try:
@@ -16,8 +60,14 @@ except:
 
 # --- CUSTOM SYNTHESIS PROMPT ---
 CUSTOM_SYNTHESIS_PROMPT = PromptTemplate(
-    "You are an expert AI Research Assistant performing deep multi-document analysis.\n"
-    "Using the context below, answer the user's question.\n\n"
+    "You are an expert AI Research Assistant. Answer ONLY from the provided context.\n\n"
+    "RULE 0 — CONTEXT IS THE ONLY SOURCE (most important rule):\n"
+    "  - If the context is empty, says 'Empty Response', or does not contain information\n"
+    "    relevant to the question, respond ONLY with:\n"
+    "    '❌ No relevant content found in the uploaded documents for this query.\n"
+    "     Please make sure the correct PDF is uploaded and try again.'\n"
+    "  - NEVER answer from your own training knowledge. NEVER guess or hallucinate.\n"
+    "  - Every fact in your answer must be traceable to the context below.\n\n"
     "MANDATORY FORMATTING RULES — follow these exactly, no exceptions:\n\n"
     "RULE 1 — FIGURES & TABLES IN THE TEXT:\n"
     "  - The context is extracted from PDFs. Figures are NOT visible to you, only their captions or surrounding text.\n"
@@ -62,15 +112,20 @@ def get_agentic_engine():
         ),
     ]
 
-    # Use 70B for the "Thinking" phase (Sub-questions)
-    question_gen = LLMQuestionGenerator.from_defaults(llm=reasoning_llm)
+    # Use 70B for sub-question decomposition.
+    # CleanJSONOutputParser strips markdown fences the model adds around JSON.
+    question_gen = LLMQuestionGenerator.from_defaults(
+        llm=reasoning_llm,
+        output_parser=CleanJSONOutputParser(),
+    )
 
-    # --- THE FIX: Explicitly build the Synthesizer with our Prompt ---
-    # We use "compact" mode to save Groq tokens by packing context tightly
+    # Build the synthesizer with an explicit PromptHelper so it NEVER
+    # falls back to LlamaIndex's 4096-token default context window.
     synthesizer = get_response_synthesizer(
-        llm=reasoning_llm, 
+        llm=reasoning_llm,
+        prompt_helper=PROMPT_HELPER,      # <-- hard-wires the 32768 context window
         text_qa_template=CUSTOM_SYNTHESIS_PROMPT,
-        response_mode="compact"
+        response_mode="compact",
     )
 
     # Create the Agent and inject the entire Synthesizer object
