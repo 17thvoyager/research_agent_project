@@ -362,9 +362,9 @@
         <div class="w-2 h-2 rounded-full" id="sessionDot" style="background:#eab308; box-shadow:0 0 8px rgba(234,179,8,0.8);"></div>
         <span id="sessionLabel" class="text-xs text-slate-400 font-mono">Connecting to API…</span>
       </div>
-      <div class="flex items-center gap-2">
-        <button class="px-3 py-1.5 rounded-lg text-xs text-slate-500 hover:text-slate-300 transition-colors" style="border:1px solid rgba(255,255,255,0.06);">History</button>
-        <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);">R</div>
+      <div class="flex items-center gap-3">
+        <button class="px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 hover:text-red-300 transition-colors" style="border:1px solid rgba(239,68,68,0.2); background:rgba(239,68,68,0.05);" onclick="logout()">Logout</button>
+        <div id="userAvatar" class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold" style="background:linear-gradient(135deg,#7c3aed,#3b82f6);">R</div>
       </div>
     </div>
 
@@ -408,10 +408,12 @@
         <button class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-slate-500 hover:text-slate-300 transition-colors" style="background:rgba(255,255,255,0.04);" onclick="document.getElementById('fileInput').click()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
         </button>
-        <input type="text" id="queryInput" class="research-input flex-1 bg-transparent text-sm text-slate-200"
+        <textarea id="queryInput" class="research-input flex-1 bg-transparent text-sm text-slate-200 resize-none overflow-hidden"
+          rows="1"
           placeholder="Ask a multi-document comparative question…"
-          style="font-family:'Inter',sans-serif;"
-          onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); submitQuery(); }" />
+          style="font-family:'Inter',sans-serif; min-height: 24px; max-height: 200px; padding-top: 2px;"
+          oninput="this.style.height = ''; this.style.height = Math.min(this.scrollHeight, 200) + 'px';"
+          onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); submitQuery(); }"></textarea>
         <div class="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs text-slate-500 flex-shrink-0" style="border:1px solid rgba(255,255,255,0.06); background:rgba(255,255,255,0.02);">
           <div class="w-1.5 h-1.5 rounded-full bg-violet-400"></div>
           Llama-3.3-70B
@@ -428,6 +430,57 @@
   <!-- ═══════════════════════════════════════════ JAVASCRIPT ═══════════════════════════════════════════ -->
   <script>
     const API = 'http://localhost:8000';
+
+    // Set Avatar on Load
+    document.addEventListener("DOMContentLoaded", () => {
+      const uname = localStorage.getItem("userName");
+      if (uname && uname.trim().length > 0) {
+        document.getElementById('userAvatar').textContent = uname.charAt(0).toUpperCase();
+        // Auto-restore previous conversation silently
+        loadAndRestoreHistory(uname);
+      } else {
+        window.location.href = "landing.html";
+      }
+    });
+
+    function logout() {
+      localStorage.removeItem("userName");
+      window.location.href = "landing.html";
+    }
+
+    async function loadAndRestoreHistory(username) {
+      try {
+        const r = await fetch(`${API}/chat/history/${encodeURIComponent(username)}`);
+        if (!r.ok) return;
+        const data = await r.json();
+        if (!data.history || data.history.length === 0) return;
+
+        document.getElementById('emptyState').classList.add('hidden');
+        const msgs = document.getElementById('messages');
+        msgs.innerHTML = '';
+
+        data.history.forEach(item => {
+          if (item.role === 'user') {
+            appendUserMessage(item.content);
+          } else {
+            const fakeId = 'hist-' + Date.now() + Math.random().toString(36).slice(2);
+            const container = document.createElement('div');
+            container.id = fakeId;
+            container.className = 'flex items-start gap-4 anim-fade w-full';
+            msgs.appendChild(container);
+            replaceThinkingWithResponse(fakeId, {
+              answer: item.content,
+              research_gaps: item.research_gaps || [],
+              citations: item.citations || [],
+              steps: []
+            });
+          }
+        });
+        setTimeout(scrollToBottom, 100);
+      } catch (e) {
+        // Silently fail — history restore is best-effort
+      }
+    }
 
     // ════════ STATE ════════
     const uploadedBlobUrls = {};    // filename → blob URL  (for viewer)
@@ -529,7 +582,13 @@
       chip.classList.add('chip-removing');
       setTimeout(async () => {
         // Tell the API to delete from ChromaDB
-        try { await fetch(`${API}/documents/${encodeURIComponent(f.name)}`, { method: 'DELETE' }); } catch {}
+        try { 
+          const uname = localStorage.getItem('userName');
+          const delUrl = uname 
+            ? `${API}/documents/${encodeURIComponent(f.name)}?username=${encodeURIComponent(uname)}`
+            : `${API}/documents/${encodeURIComponent(f.name)}`;
+          await fetch(delUrl, { method: 'DELETE' }); 
+        } catch {}
         if (uploadedBlobUrls[f.name]) { URL.revokeObjectURL(uploadedBlobUrls[f.name]); delete uploadedBlobUrls[f.name]; }
         if (currentPdfName === f.name) closePdfViewer();
         files.splice(i, 1);
@@ -541,7 +600,13 @@
     function clearWorkspace() {
       files.forEach(f => {
         if (uploadedBlobUrls[f.name]) { URL.revokeObjectURL(uploadedBlobUrls[f.name]); delete uploadedBlobUrls[f.name]; }
-        try { fetch(`${API}/documents/${encodeURIComponent(f.name)}`, { method: 'DELETE' }); } catch {}
+        try { 
+          const uname = localStorage.getItem('userName');
+          const delUrl = uname 
+            ? `${API}/documents/${encodeURIComponent(f.name)}?username=${encodeURIComponent(uname)}`
+            : `${API}/documents/${encodeURIComponent(f.name)}`;
+          fetch(delUrl, { method: 'DELETE' }); 
+        } catch {}
       });
       files = [];
       renderFiles();
@@ -569,6 +634,8 @@
           // Actually upload to FastAPI
           const form = new FormData();
           form.append('file', f);
+          const uname = localStorage.getItem('userName');
+          if (uname) form.append('username', uname);
           try {
             const r = await fetch(`${API}/upload`, { method: 'POST', body: form });
             if (!r.ok) throw new Error(await r.text());
@@ -713,11 +780,13 @@
       // Append thinking placeholder
       const thinkingId = appendThinkingPlaceholder();
 
+      const username = localStorage.getItem("userName") || null;
+
       try {
         const r = await fetch(`${API}/query`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question }),
+          body: JSON.stringify({ question, username }),
         });
 
         const data = await r.json();
@@ -1133,7 +1202,11 @@
     // Load existing server documents into the sidebar on startup
     async function loadServerDocuments() {
       try {
-        const r = await fetch(`${API}/documents`, { signal: AbortSignal.timeout(4000) });
+        const uname = localStorage.getItem('userName');
+        const url = uname
+          ? `${API}/documents?username=${encodeURIComponent(uname)}`
+          : `${API}/documents`;
+        const r = await fetch(url, { signal: AbortSignal.timeout(4000) });
         if (!r.ok) return;
         const d = await r.json();
         const serverFiles = d.files || [];

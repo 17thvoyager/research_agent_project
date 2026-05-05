@@ -21,6 +21,7 @@ import tempfile
 import traceback
 from pathlib import Path
 
+import db
 import chromadb
 # nest_asyncio is applied lazily inside get_agent() — NOT at module level
 # because uvicorn uses uvloop which conflicts with nest_asyncio at import time.
@@ -91,6 +92,7 @@ def get_agent():
 # ─────────────────────────────────────────────
 class QueryRequest(BaseModel):
     question: str
+    username: str = None
 
 class QueryResponse(BaseModel):
     answer: str
@@ -261,22 +263,27 @@ def serve_pdf(filename: str):
 
 
 @app.get("/documents")
-def list_documents():
-    """Return all PDF filenames currently stored in data/."""
-    pdfs = [p.name for p in Path(DATA_DIR).glob("*.pdf")]
-    return {"files": sorted(pdfs)}
+def list_documents(username: str = None):
+    """Return PDF filenames that belong to a specific user only."""
+    if username:
+        user_files = db.get_user_documents(username)
+        # Only include files that still exist on disk
+        visible = [f for f in user_files if (Path(DATA_DIR) / f).exists()]
+    else:
+        visible = [p.name for p in Path(DATA_DIR).glob("*.pdf")]
+    return {"files": sorted(visible)}
 
 
 @app.post("/upload")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(file: UploadFile = File(...), username: str = None):
     """
     Receive a PDF from the browser, save it to ./data/, then ingest it
     into ChromaDB (extract → chunk → embed → store).
+    Optionally links the file to a username for per-user document isolation.
     """
     if not file.filename.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
 
-    # Save to data/ dir
     dest_path = Path(DATA_DIR) / file.filename
     try:
         content = await file.read()
@@ -286,9 +293,13 @@ async def upload_pdf(file: UploadFile = File(...)):
         # Ingest into ChromaDB
         _ingest_single_pdf(dest_path)
 
+        # Register ownership in SQLite
+        if username:
+            db.register_document(username, file.filename)
+
         # Reload agent so it picks up the new document
         global _agent
-        _agent = None          # force re-init on next /query call
+        _agent = None
 
         return {
             "status":   "indexed",
@@ -302,24 +313,34 @@ async def upload_pdf(file: UploadFile = File(...)):
 
 
 @app.delete("/documents/{filename}")
-def delete_document(filename: str):
+def delete_document(filename: str, username: str = None):
     """Remove all ChromaDB vectors that came from the given file."""
     try:
-        db  = get_db()
-        col = db.get_or_create_collection(COLLECTION)
+        chroma  = get_db()
+        col = chroma.get_or_create_collection(COLLECTION)
 
-        # ChromaDB lets us filter by metadata
         results = col.get(where={"file_name": filename})
         ids     = results.get("ids", [])
         if ids:
             col.delete(ids=ids)
 
-        # Also remove from data/ if present
-        dest = Path(DATA_DIR) / filename
-        if dest.exists():
-            dest.unlink()
+        # Remove from data/ if no other user owns this file
+        if username:
+            db.remove_user_document(username, filename)
+            # Only delete disk file if no other user references it
+            remaining_owners = db.get_user_documents.__doc__  # placeholder
+            conn = __import__('sqlite3').connect(db.DB_FILE)
+            cur = conn.cursor()
+            cur.execute("SELECT COUNT(*) FROM user_documents WHERE filename = ?", (filename,))
+            count = cur.fetchone()[0]
+            conn.close()
+            if count == 0:
+                dest = Path(DATA_DIR) / filename
+                if dest.exists(): dest.unlink()
+        else:
+            dest = Path(DATA_DIR) / filename
+            if dest.exists(): dest.unlink()
 
-        # Force agent reload
         global _agent
         _agent = None
 
@@ -339,6 +360,23 @@ def query(req: QueryRequest):
     if not req.question or not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
+    # --- Intent Router ---
+    # Intercept casual greetings and rubbish to avoid running the heavy RAG pipeline
+    q = req.question.strip().lower()
+    greetings = {"hi", "hello", "hey", "yo", "sup", "how are you", "what's up", "good morning", "good afternoon", "good evening", "help", "who are you"}
+    
+    if q in greetings or (len(q) < 6 and "?" not in q):
+        # Still save greeting exchange if user is logged in
+        if req.username:
+            db.save_chat_message(req.username, "user", req.question)
+            db.save_chat_message(req.username, "assistant", "👋 **Hi there!** I am your Agentic AI Research Assistant.\n\nI am designed to analyze complex academic literature. Please upload some PDF papers to the workspace on the left, and we can start finding differences, comparing methodologies, and synthesizing information!")
+        return QueryResponse(
+            answer="👋 **Hi there!** I am your Agentic AI Research Assistant.\n\nI am designed to analyze complex academic literature. Please upload some PDF papers to the workspace on the left, and we can start finding differences, comparing methodologies, and synthesizing information!",
+            research_gaps=[],
+            citations=[],
+            steps=["Intent Router → detected conversational query", "Bypassing RAG pipeline → responding directly"]
+        )
+
     steps = [
         "Routing query → decomposing into sub-questions",
         "Embedding query → BAAI/bge-small-en-v1.5",
@@ -352,6 +390,11 @@ def query(req: QueryRequest):
         agent   = get_agent()
         response = agent.query(req.question)
         answer, gaps, citations = parse_response(response)
+
+        # Persist the exchange to SQLite
+        if req.username:
+            db.save_chat_message(req.username, "user", req.question)
+            db.save_chat_message(req.username, "assistant", answer, citations=citations, research_gaps=gaps)
 
         return QueryResponse(
             answer=answer,
@@ -393,6 +436,32 @@ def _ingest_single_pdf(pdf_path: Path):
     )
     print(f"[api] Ingested: {pdf_path.name} ({len(documents)} pages)")
 
+
+# ─────────────────────────────────────────────
+#  Auth Routes
+# ─────────────────────────────────────────────
+class AuthRequest(BaseModel):
+    username: str
+    password: str
+
+@app.post("/auth/register")
+def register(req: AuthRequest):
+    success, msg = db.register_user(req.username, req.password)
+    if not success:
+        raise HTTPException(status_code=400, detail=msg)
+    return {"status": "success", "message": msg}
+
+@app.post("/auth/login")
+def login(req: AuthRequest):
+    if db.verify_user(req.username, req.password):
+        return {"status": "success", "message": "Login successful."}
+    else:
+        raise HTTPException(status_code=401, detail="Invalid credentials.")
+
+@app.get("/chat/history/{username}")
+def get_history(username: str):
+    history = db.get_chat_history(username)
+    return {"status": "success", "history": history}
 
 # ─────────────────────────────────────────────
 #  Entry point

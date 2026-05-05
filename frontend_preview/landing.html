@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agentic Research Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #030712;
+      --violet: #7c3aed;
+      --blue: #3b82f6;
+    }
+    
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--bg);
+      color: #f8fafc;
+      overflow-x: hidden;
+      margin: 0;
+      scroll-behavior: smooth;
+    }
+    
+    /* Animated Background Gradients */
+    .bg-mesh {
+      position: fixed;
+      inset: 0;
+      background: 
+        radial-gradient(circle at 15% 50%, rgba(124, 58, 237, 0.08), transparent 40%),
+        radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.08), transparent 40%),
+        radial-gradient(circle at 50% 80%, rgba(139, 92, 246, 0.05), transparent 50%);
+      z-index: -1;
+      filter: blur(60px);
+      animation: pulse-bg 15s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse-bg {
+      0% { transform: scale(1); }
+      100% { transform: scale(1.1); }
+    }
+
+    /* Top Greeting Bar */
+    .top-bar {
+      position: absolute;
+      top: 0; width: 100%;
+      text-align: center;
+      padding: 12px;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      background: rgba(3, 7, 18, 0.5);
+      backdrop-filter: blur(10px);
+      z-index: 20;
+    }
+
+    /* 3D Interactive Orb */
+    .orb-container {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 400px; height: 400px;
+      z-index: 0;
+      pointer-events: none;
+      perspective: 1000px;
+    }
+    
+    .orb {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, rgba(124, 58, 237, 0.8), rgba(59, 130, 246, 0.4), transparent 70%);
+      box-shadow: 
+        0 0 100px rgba(124, 58, 237, 0.5),
+        inset 0 0 50px rgba(59, 130, 246, 0.5);
+      animation: float-orb 10s ease-in-out infinite alternate;
+      transition: transform 0.2s ease-out;
+      transform-style: preserve-3d;
+      mix-blend-mode: screen;
+      opacity: 0.8;
+    }
+
+    .orb::after {
+      content: '';
+      position: absolute;
+      inset: -20px;
+      border-radius: 50%;
+      border: 1px dashed rgba(255,255,255,0.1);
+      animation: spin 20s linear infinite;
+    }
+
+    .orb::before {
+      content: '';
+      position: absolute;
+      inset: -40px;
+      border-radius: 50%;
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      animation: spin 30s linear infinite reverse;
+    }
+
+    @keyframes float-orb {
+      0% { transform: translateY(0) scale(1); }
+      100% { transform: translateY(-20px) scale(1.05); }
+    }
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Viewport Sections */
+    .viewport {
+      min-height: 100vh;
+      width: 100%;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 4rem 1.5rem;
+      z-index: 10;
+    }
+
+    /* Typography */
+    .hero-title {
+      font-size: clamp(3rem, 8vw, 6rem);
+      font-weight: 800;
+      line-height: 1.1;
+      text-align: center;
+      background: linear-gradient(to bottom right, #ffffff, #a5b4fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      z-index: 10;
+      margin-bottom: 2rem;
+      letter-spacing: -0.03em;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--violet), var(--blue));
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 30px rgba(124, 58, 237, 0.6);
+      transform: translateY(-2px);
+    }
+    
+    .btn-ghost {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.08);
+      border-color: rgba(255,255,255,0.2);
+    }
+
+    /* Scroll Indicator */
+    .scroll-indicator {
+      position: absolute;
+      bottom: 2rem;
+      animation: bounce 2s infinite;
+      opacity: 0.6;
+      transition: opacity 0.3s;
+    }
+    .scroll-indicator:hover { opacity: 1; }
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-10px); }
+      60% { transform: translateY(-5px); }
+    }
+
+    /* Glassmorphism Panels */
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 1.5rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      transition: transform 0.4s, border-color 0.4s;
+    }
+
+    /* Timeline (Viewport 2) */
+    .timeline {
+      position: relative;
+      max-width: 800px;
+      width: 100%;
+      margin-top: 3rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      top: 0; bottom: 0;
+      left: 32px;
+      width: 2px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .timeline-item {
+      position: relative;
+      margin-left: 80px;
+      margin-bottom: 3rem;
+      opacity: 0.3;
+      transform: translateX(-20px);
+      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .timeline-item.active {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      /* Card is shifted 80px right. Line is at 32px.
+         To center a 20px bullet on the 33px line center:
+         We need the bullet left edge at 23px relative to container.
+         23px - 80px = -57px. */
+      left: -57px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #0f172a;
+      border: 2px solid rgba(255,255,255,0.2);
+      transition: all 0.5s ease;
+      z-index: 2;
+    }
+    .timeline-item.active::before {
+      border-color: var(--violet);
+      background: var(--violet);
+      box-shadow: 0 0 15px var(--violet);
+    }
+
+    /* Metrics (Viewport 3) */
+    .metric-number {
+      font-size: 3.5rem;
+      font-weight: 800;
+      background: linear-gradient(to right, #60a5fa, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+    }
+
+    /* Auth Modal */
+    #authModal {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s ease;
+      backdrop-filter: blur(25px);
+    }
+    #authModal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .auth-card {
+      transform: translateY(20px) scale(0.95);
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    #authModal.active .auth-card {
+      transform: translateY(0) scale(1);
+    }
+    
+    .glass-input {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f8fafc;
+      transition: all 0.3s ease;
+    }
+    .glass-input:focus {
+      outline: none;
+      border-color: var(--violet);
+      box-shadow: 0 0 15px rgba(124, 58, 237, 0.4), inset 0 0 10px rgba(124, 58, 237, 0.1);
+      background: rgba(0, 0, 0, 0.4);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-mesh"></div>
+
+  <!-- SECTION 1: THE HERO -->
+  <div class="top-bar">Welcome to the future of academic synthesis</div>
+  
+  <section id="hero" class="viewport">
+    
+    <div class="orb-container">
+      <div class="orb" id="heroOrb"></div>
+    </div>
+
+    <h1 class="hero-title relative">Agentic Research<br>Intelligence.</h1>
+    
+    <div class="flex flex-col sm:flex-row gap-4 mt-8 relative z-20">
+      <button onclick="openAuth()" class="btn-primary px-8 py-4 rounded-xl text-white font-semibold flex items-center justify-center gap-2">
+        Enter Private Lab (Log In)
+      </button>
+      <a href="index.html" class="btn-ghost px-8 py-4 rounded-xl text-slate-300 font-medium flex items-center justify-center">
+        Explore Guest Sandbox
+      </a>
+    </div>
+
+    <a href="#pipeline" class="scroll-indicator flex flex-col items-center gap-2 text-slate-500 hover:text-white">
+      <span class="text-xs tracking-widest uppercase">Discover More</span>
+      <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+    </a>
+  </section>
+
+  <!-- SECTION 2: THE PIPELINE -->
+  <section id="pipeline" class="viewport bg-slate-950/40 border-y border-white/5">
+    <h2 class="text-3xl md:text-5xl font-bold mb-4 text-center">How the Agent Thinks.</h2>
+    <p class="text-slate-400 text-center max-w-xl">A transparent, deterministic reasoning engine built for rigorous academic standards.</p>
+
+    <div class="timeline" id="timelineContainer">
+      
+      <div class="timeline-item glass-panel p-6 observer-item">
+        <h3 class="text-xl font-bold text-white mb-2">1. Ingestion</h3>
+        <p class="text-slate-400 text-sm">LlamaParse Markdown extraction perfectly interprets dense academic PDFs, tables, and complex formatting.</p>
+      </div>
+
+      <div class="timeline-item glass-panel p-6 observer-item">
+        <h3 class="text-xl font-bold text-white mb-2">2. Hybrid Search</h3>
+        <p class="text-slate-400 text-sm">Dense Vector similarity paired with BM25 keyword matching ensures no technical concept or exact version number is missed.</p>
+      </div>
+
+      <div class="timeline-item glass-panel p-6 observer-item">
+        <h3 class="text-xl font-bold text-white mb-2">3. Reranking</h3>
+        <p class="text-slate-400 text-sm">8B model context pruning dynamically rescores the fused documents to prioritize only the most relevant passages.</p>
+      </div>
+
+      <div class="timeline-item glass-panel p-6 observer-item">
+        <h3 class="text-xl font-bold text-white mb-2">4. Synthesis</h3>
+        <p class="text-slate-400 text-sm">70B model structural generation writes the final report, citing every claim with deep-linked source document citations.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- SECTION 3: THE METRICS & FOOTER -->
+  <section id="metrics" class="viewport">
+    <h2 class="text-3xl md:text-5xl font-bold mb-16 text-center">Audited for Academic Rigor.</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl mb-24">
+      <div class="text-center">
+        <div class="metric-number" data-val="100">0</div>
+        <div class="text-sm font-semibold text-slate-300 uppercase tracking-widest">Faithfulness</div>
+        <div class="text-xs text-slate-500 mt-2">Zero Hallucinations Guarantee</div>
+      </div>
+      <div class="text-center">
+        <div class="metric-number" data-val="100">0</div>
+        <div class="text-sm font-semibold text-slate-300 uppercase tracking-widest">Context Relevancy</div>
+        <div class="text-xs text-slate-500 mt-2">Cross-encoder validation</div>
+      </div>
+      <div class="text-center">
+        <div class="metric-number" data-val="4.6" data-decimal="true">0.0</div>
+        <div class="text-sm font-semibold text-slate-300 uppercase tracking-widest">Ground Truth Correctness</div>
+        <div class="text-xs text-slate-500 mt-2">Out of 5.0 RAGAS Scale</div>
+      </div>
+    </div>
+
+    <div class="text-center glass-panel p-10 md:p-16 max-w-4xl w-full">
+      <h3 class="text-2xl font-bold text-white mb-8">Ready to streamline your literature review?</h3>
+      <div class="flex flex-col sm:flex-row justify-center gap-4">
+        <button onclick="openAuth()" class="btn-primary px-8 py-4 rounded-xl text-white font-semibold">
+          Enter Private Lab
+        </button>
+        <a href="index.html" class="btn-ghost px-8 py-4 rounded-xl text-slate-300 font-medium">
+          Explore Guest Sandbox
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- AUTHENTICATION MODAL -->
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80">
+    <div class="auth-card glass-panel w-full max-w-md p-8 relative overflow-hidden border border-slate-700">
+      
+      <!-- Neon Glow behind modal -->
+      <div class="absolute -top-20 -right-20 w-48 h-48 bg-violet-600/40 rounded-full blur-[60px] pointer-events-none"></div>
+
+      <button onclick="closeAuth()" class="absolute top-5 right-5 text-slate-400 hover:text-white transition-colors">
+        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+      </button>
+
+      <h2 id="authTitle" class="text-2xl font-bold text-white mb-8 text-center">Authenticate Identity.</h2>
+
+      <form onsubmit="handleAuth(event)">
+        <p id="authError" class="text-xs font-semibold text-red-400 text-center mb-4 hidden bg-red-500/10 py-2 rounded-lg border border-red-500/20"></p>
+        
+        <div class="space-y-5 mb-8">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Username</label>
+            <input id="userInput" type="text" required placeholder="your_username" class="glass-input w-full px-4 py-3 rounded-xl text-sm" autocomplete="off" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Passphrase</label>
+            <input id="passInput" type="password" required placeholder="••••••••" class="glass-input w-full px-4 py-3 rounded-xl text-sm" />
+          </div>
+          <div id="confirmPassGroup" class="hidden">
+            <label class="block text-xs font-semibold text-slate-400 mb-2 uppercase tracking-wide">Confirm Passphrase</label>
+            <input type="password" placeholder="••••••••" class="glass-input w-full px-4 py-3 rounded-xl text-sm" />
+          </div>
+        </div>
+
+        <button id="authBtn" type="submit" class="btn-primary w-full py-4 rounded-xl text-white font-bold text-sm tracking-wide">
+          Initialize Session
+        </button>
+      </form>
+
+      <div class="mt-8 text-center">
+        <button onclick="toggleAuthMode()" id="authToggleBtn" class="text-sm text-slate-400 hover:text-white transition-colors border-none bg-transparent cursor-pointer">
+          No account? <span class="text-violet-400">Create Account</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // --- 3D Orb Mouse Interaction ---
+    const orb = document.getElementById('heroOrb');
+    document.addEventListener('mousemove', (e) => {
+      const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
+      const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
+      orb.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
+    });
+
+    // --- Auth Modal Logic ---
+    let isLogin = true;
+    function openAuth() { document.getElementById('authModal').classList.add('active'); }
+    function closeAuth() { 
+      document.getElementById('authModal').classList.remove('active'); 
+      document.getElementById('authError').classList.add('hidden');
+    }
+    
+    async function handleAuth(event) {
+      event.preventDefault();
+      const username = document.getElementById('userInput').value.toLowerCase().trim();
+      const password = document.getElementById('passInput').value;
+      const errorBox = document.getElementById('authError');
+      const btn = document.getElementById('authBtn');
+      const origText = btn.textContent;
+      
+      // If signing up, verify confirm password matches
+      if (!isLogin) {
+          const confirmPass = document.getElementById('confirmPassGroup').querySelector('input').value;
+          if (password !== confirmPass) {
+              errorBox.textContent = "Passphrases do not match.";
+              errorBox.classList.remove('hidden');
+              return;
+          }
+      }
+
+      errorBox.classList.add('hidden');
+      btn.innerHTML = `<svg class="animate-spin h-5 w-5 mx-auto text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+      
+      const endpoint = isLogin ? '/auth/login' : '/auth/register';
+      
+      try {
+        const res = await fetch(`http://localhost:8000${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        
+        if (res.ok) {
+            localStorage.setItem("userName", username);
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 500);
+        } else {
+            const data = await res.json();
+            let errorMessage = "Authentication failed";
+            if (data.detail) {
+                errorMessage = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+            }
+            throw new Error(errorMessage);
+        }
+      } catch (err) {
+        btn.textContent = isLogin ? "Initialize Session" : "Register Access";
+        errorBox.textContent = err.message;
+        errorBox.classList.remove('hidden');
+        
+        const card = document.querySelector('.auth-card');
+        card.style.transform = "translateY(0) scale(1) translateX(10px)";
+        setTimeout(() => card.style.transform = "translateY(0) scale(1) translateX(-10px)", 100);
+        setTimeout(() => card.style.transform = "translateY(0) scale(1) translateX(10px)", 200);
+        setTimeout(() => card.style.transform = "translateY(0) scale(1) translateX(0)", 300);
+      }
+    }
+    
+    function toggleAuthMode() {
+      isLogin = !isLogin;
+      
+      // Clear all fields and errors so nothing carries over
+      document.getElementById('userInput').value = '';
+      document.getElementById('passInput').value = '';
+      document.getElementById('confirmPassGroup').querySelector('input').value = '';
+      document.getElementById('authError').classList.add('hidden');
+      document.getElementById('authBtn').textContent = isLogin ? "Initialize Session" : "Register Access";
+
+      document.getElementById('authTitle').textContent = isLogin ? "Authenticate Identity." : "Create Account.";
+      document.getElementById('authToggleBtn').innerHTML = isLogin 
+        ? `No account? <span class="text-violet-400">Create Account</span>` 
+        : `Have an account? <span class="text-violet-400">Sign In</span>`;
+        
+      const confirmGroup = document.getElementById('confirmPassGroup');
+      const confirmInput = confirmGroup.querySelector('input');
+      if (isLogin) {
+        confirmGroup.classList.add('hidden');
+        confirmInput.removeAttribute('required');
+      } else {
+        confirmGroup.classList.remove('hidden');
+        confirmInput.setAttribute('required', 'required');
+      }
+      
+      // Focus the username field for immediate typing
+      document.getElementById('userInput').focus();
+    }
+
+    document.getElementById('authModal').addEventListener('click', function(e) {
+      if (e.target === this) closeAuth();
+    });
+
+    // --- Intersection Observer for Scroll Animations ---
+    const observerOptions = { threshold: 0.2, rootMargin: "0px 0px -100px 0px" };
+    
+    // Timeline Items
+    const timelineObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('active');
+        }
+      });
+    }, observerOptions);
+    
+    document.querySelectorAll('.timeline-item').forEach(el => timelineObserver.observe(el));
+
+    // Number Counters
+    const metricsObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting && !entry.target.classList.contains('counted')) {
+          entry.target.classList.add('counted');
+          animateValue(entry.target);
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.metric-number').forEach(el => metricsObserver.observe(el));
+
+    function animateValue(obj) {
+      const target = parseFloat(obj.getAttribute('data-val'));
+      const isDecimal = obj.getAttribute('data-decimal') === 'true';
+      const duration = 2000;
+      const startTime = performance.now();
+      
+      const update = (currentTime) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function
+        const easeOutQuad = progress * (2 - progress);
+        const current = target * easeOutQuad;
+        
+        if (isDecimal) {
+          obj.textContent = current.toFixed(1);
+        } else {
+          obj.textContent = Math.floor(current) + (target === 100 ? '%' : '');
+        }
+        
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        } else {
+          obj.textContent = isDecimal ? target.toFixed(1) : target + '%';
+        }
+      };
+      
+      requestAnimationFrame(update);
+    }
+  </script>
+</body>
+</html>

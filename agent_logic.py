@@ -41,6 +41,10 @@ class CleanJSONOutputParser(SubQuestionOutputParser):
                     break
 
         json_only = cleaned[start : end + 1].strip()
+        
+        # Pydantic safeguard: if LLM returns null tool_name for conversational queries
+        json_only = json_only.replace('"tool_name": null', '"tool_name": "research_database"')
+        
         return super().parse(json_only)
 
 # Explicitly define the context budget so PromptHelper never defaults to 4096.
